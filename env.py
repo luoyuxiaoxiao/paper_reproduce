@@ -29,7 +29,7 @@ class State():
         ])
 
     def __repr__(self):
-        return "<State: [{}, {}, {}, {}]>".format(self.Dn, self.tolerable_frame, self.h, self.remaining_frame)
+        return f"<State: [{self.Dn}, {self.tolerable_frame}, {self.h}, {self.remaining_frame}]>"
 
     def clone(self):
         return State(self.Dn, self.tolerable_frame, self.h, self.remaining_frame)
@@ -61,8 +61,8 @@ class Action():
         # 从每个动作空间（即矩阵的每一行）中随机选择一个动作
         actions = [np.random.choice(action_space) for action_space in self.action_space]
         labels = []
-        for _, action in enumerate(actions):
-            label = 'Action_{}'.format(action)
+        for action in actions:
+            label = f'Action_{action}'
             labels.append(label)
         return labels
 
@@ -125,15 +125,13 @@ class Environment():
     ## 参数：动作action，一次选择的所有用户的动作
     ## 返回 下一个状态next_state，奖励reward，是否结束done
     def step(self, action = None, seed = None):
+        # sourcery skip: sum-comprehension
         I = np.zeros(self.N) # 判断延迟是否满足最大延迟要求，不满足则为1，满足则为0 
         self.reset(seed)
 
-        if action is None:
-            action_choose = self.action.pop_actions() # 选择动作
-        else:
-            action_choose = action
+        action_choose = self.action.pop_actions() if action is None else action
         self.actions.append(action_choose) # 记录动作
-        
+
         h_choose = np.zeros(self.N) # 选择动作对应的信道增益
         rate = np.zeros(self.N)
         delay = np.zeros(self.N)
@@ -162,7 +160,7 @@ class Environment():
                 self.e_cycle[n] = self.eta * self.fn[n] ** 2
                 self.e_local[n] = self.mu[n] * self.Dn[n] * self.Cn[n] * self.e_cycle[n]
         ## 至此，得到了 delay，rate，e_local，e_cycle均为N维向量，分别代表每个用户的延迟，速率，本地能耗，计算能耗
-        
+
         self.reward += (self.battery - np.sum(self.e_local) ) * 1e-4 # 计算本地能耗
         for N in range(self.N):
             if delay[N] > self.threshold:
@@ -197,10 +195,7 @@ class Environment():
 
     def is_done(self):
         # 判断当前环境是否结束
-        if self.is_terminals[-1]:
-            return True
-        else:
-            return False
+        return bool(self.is_terminals[-1])
 
 
 ## 全局变量
@@ -233,8 +228,8 @@ if __name__ == '__main__':
     T = 90
     battery = 10000
 
-    env = Environment(N, M, Width, fv, Dn, Cn, fn, distance, P, mu, eta, sigma, alpha, T, threshold, battery)   
-    for t in range(10):
+    env = Environment(N, M, Width, fv, Dn, Cn, fn, distance, P, mu, eta, sigma, alpha, T, threshold, battery)
+    for _ in range(10):
         next_state, reward, done = env.step()
         #print(env.h)
         if done:
