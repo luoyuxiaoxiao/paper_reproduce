@@ -22,7 +22,7 @@ class State():
 
         # 将所有属性展平并连接成一个数组
         return np.concatenate([
-            Dn_array.flatten(),
+            # Dn_array.flatten(),
             tolerable_frame_array.flatten(),
             h_array.flatten(),
             remaining_frame_array.flatten()
@@ -127,7 +127,12 @@ class Environment():
     def step(self, action = None, seed = None):
         # sourcery skip: sum-comprehension
         I = np.zeros(self.N) # 判断延迟是否满足最大延迟要求，不满足则为1，满足则为0 
-        self.reset(seed)
+
+
+        self.gn = np.random.rayleigh(1, (self.N, self.M + 1)) # 瑞利衰减系数,按照瑞利分布随机取的值
+        self.distant = np.random.uniform(low=0, high=200, size=(self.N, 1)) # 随机取用户到边缘服务器的距离，待修改
+        self.h = self.gn * self.distant ** (-self.alpha) # 计算信道增益
+        self.state.h = self.h
 
         action_choose = self.action.pop_actions() if action is None else action
         self.actions.append(action_choose) # 记录动作
@@ -183,7 +188,7 @@ class Environment():
         self.rewards.append(self.reward) # 记录奖励
         self.is_terminals.append(done) # 记录是否结束
 
-        return self.state.h, self.reward, done
+        return self.state.to_numpy(), self.reward, done
 
     def render(self):
         # 可视化当前环境

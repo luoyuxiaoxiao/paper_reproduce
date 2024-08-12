@@ -1,0 +1,1 @@
+ 打开git bash后，输入 ssh -T git@github.com 连接github。

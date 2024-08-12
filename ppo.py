@@ -39,7 +39,7 @@ T = 90
 battery = 10000
 
 env = env.Environment(N, M, Width, fv, Dn, Cn, fn, distance, P, mu, eta, sigma, alpha, T, threshold, battery)
-num_state = 19
+num_state = 16
 #num_action = 64
 num_users = 3
 num_action_per_user = 4
@@ -58,6 +58,7 @@ class Actor(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
+        print(x.shape)
         action_logits = self.action_head(x)
         # Reshape logits to (batch_size, num_users, num_action_per_user)
         action_logits = action_logits.view(-1, num_users, num_action_per_user)
@@ -121,7 +122,7 @@ class PPO():
             value = self.critic_net(state)
         return value.item()
 
-    def save_param(self):
+    def save_param(self):  # sourcery skip: use-fstring-for-concatenation
         torch.save(self.actor_net.state_dict(), '../param/net_param/actor_net' + str(time.time())[:10], +'.pkl')
         torch.save(self.critic_net.state_dict(), '../param/net_param/critic_net' + str(time.time())[:10], +'.pkl')
 
@@ -144,10 +145,10 @@ class PPO():
         Gt = torch.tensor(Gt, dtype=torch.float)
 
         # PPO 更新
-        for i in range(self.ppo_update_time):
+        for _ in range(self.ppo_update_time):
             for index in BatchSampler(SubsetRandomSampler(range(len(self.buffer))), self.batch_size, False):
                 if self.training_step % 1000 == 0:
-                    print('I_ep {} ，train {} times'.format(i_ep, self.training_step))
+                    print(f'I_ep {i_ep} ，train {self.training_step} times')
 
                 Gt_index = Gt[index].view(-1, 1)
                 V = self.critic_net(states[index])
@@ -179,7 +180,7 @@ class PPO():
         del self.buffer[:]  # 清除经验
 
 
-def main():
+def main():  # sourcery skip: for-index-underscore
     agent = PPO()
     for i_epoch in range(1000):
         state = env.reset()
