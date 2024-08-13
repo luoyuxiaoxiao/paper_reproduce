@@ -1,15 +1,8 @@
-import argparse
-import pickle
 from collections import namedtuple
 from itertools import count
-
 import os
 import time
 import numpy as np
-import matplotlib.pyplot as plt
-
-import gym
-# from pyppo import env
 import env
 import torch
 import torch.nn as nn
@@ -58,7 +51,6 @@ class Actor(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        print(x.shape)
         action_logits = self.action_head(x)
         # Reshape logits to (batch_size, num_users, num_action_per_user)
         action_logits = action_logits.view(-1, num_users, num_action_per_user)
@@ -92,13 +84,13 @@ class PPO():
         self.buffer = []
         self.counter = 0
         self.training_step = 0
-        self.writer = SummaryWriter('../exp')
+        self.writer = SummaryWriter('./exp')
 
         self.actor_optimizer = optim.Adam(self.actor_net.parameters(), 1e-3)
         self.critic_net_optimizer = optim.Adam(self.critic_net.parameters(), 3e-3)
-        if not os.path.exists('../param'):
-            os.makedirs('../param/net_param')
-            os.makedirs('../param/img')
+        if not os.path.exists('./param'):
+            os.makedirs('./param/net_param')
+            os.makedirs('./param/img')
 
     def select_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -113,7 +105,7 @@ class PPO():
         actions = actions.flatten().tolist()  # 将动作张量转换为列表
         # 从动作概率中提取每个动作的概率
         action_probs = [action_prob[0, user, action].item() for user, action in enumerate(actions)]
-        print(action_probs)
+        # print(action_probs)
         return actions, action_probs
 
     def get_value(self, state):
@@ -123,8 +115,8 @@ class PPO():
         return value.item()
 
     def save_param(self):  # sourcery skip: use-fstring-for-concatenation
-        torch.save(self.actor_net.state_dict(), '../param/net_param/actor_net' + str(time.time())[:10], +'.pkl')
-        torch.save(self.critic_net.state_dict(), '../param/net_param/critic_net' + str(time.time())[:10], +'.pkl')
+        torch.save(self.actor_net.state_dict(), './param/net_param/actor_net' + str(time.time())[:10], +'.pkl')
+        torch.save(self.critic_net.state_dict(), './param/net_param/critic_net' + str(time.time())[:10], +'.pkl')
 
     def store_transition(self, transition):
         self.buffer.append(transition)
@@ -158,8 +150,7 @@ class PPO():
                 advantage = delta.detach()
 
                 action_probs = self.actor_net(states[index])  # 形状: (batch_size, num_users, num_action_per_user)
-                action_probs = action_probs.gather(2, actions[index].unsqueeze(-1)).squeeze(
-                    -1)  # 使用 gather 操作，形状: (batch_size, num_users)
+                action_probs = action_probs.gather(2, actions[index].unsqueeze(-1)).squeeze(-1)  # 使用 gather 操作，形状: (batch_size, num_users)
                 ratio = action_probs / old_action_log_probs[index]
                 surr1 = ratio * advantage
                 surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * advantage
@@ -186,18 +177,20 @@ class PPO():
 
 def main():  # sourcery skip: for-index-underscore
     agent = PPO()
-    for i_epoch in range(1000):
-        state = env.reset()
-        print(state)
-        if render: env.render()
+    for i_epoch in range(100):
+        seed = 0
+        state = env.reset(seed)
+        # env.clear_memory()
 
         total_reward = 0  # 记录每个 episode 的总奖励
         steps = 0  # 记录每个 episode 的步数
 
         for t in count():
             action, action_prob = agent.select_action(state)
-            print(action)
-            next_state, reward, done = env.step(action)
+            # print(action)
+            next_state, reward, done = env.step(action,seed)
+            seed += 1
+            
             trans = Transition(state, action, action_prob, reward, next_state)
             if render: env.render()
             agent.store_transition(trans)

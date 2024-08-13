@@ -1,5 +1,4 @@
 import numpy as np
-import gym
 # from gym.spaces import Discrete, Tuple
 import matplotlib.pyplot as plt
 
@@ -13,7 +12,7 @@ class State():
 
     def to_numpy(self):
         # 将所有属性转换为 NumPy 数组
-        Dn_array = np.array(self.Dn, dtype=np.float32)
+        # Dn_array = np.array(self.Dn, dtype=np.float32)
         tolerable_frame_array = np.array(self.tolerable_frame,
                                          dtype=np.float32) if self.tolerable_frame is not None else np.array([])
         h_array = np.array(self.h, dtype=np.float32) if self.h is not None else np.array([])
@@ -107,14 +106,14 @@ class Environment():
         del self.logprobs[:]
         del self.rewards[:]
         del self.is_terminals[:]
-    
-    def reset_train(self):
-        return self.reset().h
 
-    def reset(self, seed = None):
+    def reset(self, seed = None):  # sourcery skip: class-extract-method
         if seed is not None:
             np.random.seed(seed)
-            
+
+        self.reward = 0
+        self.done = False
+        self.tolerable_frame = self.T - self.T_success # 每个用户所能“容忍的帧数”
         self.gn = np.random.rayleigh(1, (self.N, self.M + 1)) # 瑞利衰减系数,按照瑞利分布随机取的值
         self.distant = np.random.uniform(low=0, high=200, size=(self.N, 1)) # 随机取用户到边缘服务器的距离，待修改
         self.h = self.gn * self.distant ** (-self.alpha) # 计算信道增益
@@ -125,6 +124,8 @@ class Environment():
     ## 参数：动作action，一次选择的所有用户的动作
     ## 返回 下一个状态next_state，奖励reward，是否结束done
     def step(self, action = None, seed = None):
+        if seed is not None:
+            np.random.seed(seed)
         # sourcery skip: sum-comprehension
         I = np.zeros(self.N) # 判断延迟是否满足最大延迟要求，不满足则为1，满足则为0 
 
@@ -143,8 +144,8 @@ class Environment():
 
         # 按照选择的动作，取出对应的信道增益, n是目前第几个人， action是一个列表，每个元素是一个用户选择的动作
         # rate包括每个用户的速率
-        print(type(action_choose))
-        print(action_choose)
+        # print(type(action_choose))
+        # print(action_choose)
         for n, action in enumerate(action_choose): 
             # 用户选择的通道不是本地计算
             if action != 0:
@@ -178,17 +179,17 @@ class Environment():
         self.state.tolerable_frame = self.tolerable_frame # 存储当前状态的tolerable_frame
         for N in range(self.N):
             if self.tolerable_frame[N] == 0:
-                done = True
+                self.done = True
                 self.reward -= 10000
                 break
             else:
-                done = False
+                self.done = False
 
         self.states.append(self.state) # 记录状态
         self.rewards.append(self.reward) # 记录奖励
-        self.is_terminals.append(done) # 记录是否结束
+        self.is_terminals.append(self.done) # 记录是否结束
 
-        return self.state.to_numpy(), self.reward, done
+        return self.state.to_numpy(), self.reward, self.done
 
     def render(self):
         # 可视化当前环境
