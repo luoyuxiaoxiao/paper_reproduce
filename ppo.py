@@ -205,7 +205,7 @@ def main():  # sourcery skip: for-index-underscore
             if done:
                 if len(agent.buffer) >= agent.batch_size:
                     agent.update(i_epoch)
-                agent.writer.add_scalar('liveTime/livestep', steps, global_step=i_epoch)
+                # agent.writer.add_scalar('liveTime/livestep', steps, global_step=i_epoch)
 
                 # 打印每个 episode 的总奖励和步数
                 print(f"Episode {i_epoch} finished. Total reward: {total_reward}, Total steps: {steps}")
