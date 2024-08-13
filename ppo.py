@@ -132,9 +132,11 @@ class PPO():
 
     def update(self, i_ep):
         states = torch.tensor([t.state.flatten() for t in self.buffer], dtype=torch.float)
-        actions = torch.tensor([t.action for t in self.buffer], dtype=torch.long).view(-1, 1)
+        actions = torch.tensor([t.action for t in self.buffer], dtype=torch.long).view(-1,
+                                                                                       num_users)
         rewards = [t.reward for t in self.buffer]
-        old_action_log_probs = torch.tensor([t.a_log_prob for t in self.buffer], dtype=torch.float).view(-1, 1)
+        old_action_log_probs = torch.tensor([t.a_log_prob for t in self.buffer], dtype=torch.float).view(-1,
+                                                                                                         num_users)
 
         # 计算 Gt
         R = 0
@@ -155,7 +157,9 @@ class PPO():
                 delta = Gt_index - V
                 advantage = delta.detach()
 
-                action_probs = self.actor_net(states[index]).gather(1, actions[index])
+                action_probs = self.actor_net(states[index])  # 形状: (batch_size, num_users, num_action_per_user)
+                action_probs = action_probs.gather(2, actions[index].unsqueeze(-1)).squeeze(
+                    -1)  # 使用 gather 操作，形状: (batch_size, num_users)
                 ratio = action_probs / old_action_log_probs[index]
                 surr1 = ratio * advantage
                 surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * advantage
@@ -205,7 +209,7 @@ def main():  # sourcery skip: for-index-underscore
             if done:
                 if len(agent.buffer) >= agent.batch_size:
                     agent.update(i_epoch)
-                # agent.writer.add_scalar('liveTime/livestep', steps, global_step=i_epoch)
+                agent.writer.add_scalar('liveTime/livestep', steps, global_step=i_epoch)
 
                 # 打印每个 episode 的总奖励和步数
                 print(f"Episode {i_epoch} finished. Total reward: {total_reward}, Total steps: {steps}")
@@ -218,7 +222,6 @@ if __name__ == '__main__':
 
 
     main()
-
 
 
 
