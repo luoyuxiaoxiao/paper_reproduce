@@ -17,30 +17,30 @@ gamma = 0.99
 render = False
 seed = 1
 log_interval = 10
-N = 3
+N = 5
 M = 3
 Width = 180
 fv = 20
 Dn, Cn = np.random.uniform(300, 500, N), [600 for _ in range(N)]
 fn = np.random.uniform(0.5, 1.5, N)
-distance = np.random.uniform(0, 200, N)
+distance = np.random.uniform(0, 900, N)
 P = np.random.uniform(40000, 60000, N)
 mu, eta = np.zeros(N), 0.5
 sigma, alpha = 1e-2, 2
 threshold = 50000
 T = 90
-battery = 10000
+battery = 100
 
 env = env.Environment(N, M, Width, fv, Dn, Cn, fn, distance, P, mu, eta, sigma, alpha, T, threshold, battery)
-num_state = 16
-#num_action = 64
-num_users = 3
+num_state = 26
+# num_action = 64
+num_users = 5
 num_action_per_user = 4
 # num_action = np.array(env.action.get_action_space()).shape[1]
 
 torch.manual_seed(seed)
-#env.seed(seed)
-Transition = namedtuple('Transition',['state', 'action', 'a_log_prob', 'reward', 'next_state'])
+# env.seed(seed)
+Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
 
 
 class Actor(nn.Module):
@@ -58,6 +58,7 @@ class Actor(nn.Module):
         action_prob = F.softmax(action_logits, dim=-1)
         return action_prob
 
+
 class Critic(nn.Module):
     def __init__(self, num_state):
         super(Critic, self).__init__()
@@ -71,11 +72,11 @@ class Critic(nn.Module):
 
 
 class PPO():
-    clip_param = 0.2
+    clip_param = 0.1
     max_grad_norm = 0.5
     ppo_update_time = 10
-    buffer_capacity = 1000
-    batch_size = 32
+    buffer_capacity = 2000
+    batch_size = 64
 
     def __init__(self):
         super(PPO, self).__init__()
@@ -86,8 +87,8 @@ class PPO():
         self.training_step = 0
         self.writer = SummaryWriter('./exp')
 
-        self.actor_optimizer = optim.Adam(self.actor_net.parameters(), 1e-3)
-        self.critic_net_optimizer = optim.Adam(self.critic_net.parameters(), 3e-3)
+        self.actor_optimizer = optim.Adam(self.actor_net.parameters(), 1e-4)
+        self.critic_net_optimizer = optim.Adam(self.critic_net.parameters(), 2e-4)
         if not os.path.exists('./param'):
             os.makedirs('./param/net_param')
             os.makedirs('./param/img')
@@ -150,7 +151,8 @@ class PPO():
                 advantage = delta.detach()
 
                 action_probs = self.actor_net(states[index])  # 形状: (batch_size, num_users, num_action_per_user)
-                action_probs = action_probs.gather(2, actions[index].unsqueeze(-1)).squeeze(-1)  # 使用 gather 操作，形状: (batch_size, num_users)
+                action_probs = action_probs.gather(2, actions[index].unsqueeze(-1)).squeeze(
+                    -1)  # 使用 gather 操作，形状: (batch_size, num_users)
                 ratio = action_probs / old_action_log_probs[index]
                 surr1 = ratio * advantage
                 surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * advantage
@@ -177,7 +179,8 @@ class PPO():
 
 def main():  # sourcery skip: for-index-underscore
     agent = PPO()
-    for i_epoch in range(100):
+    rewards_history = []  # 用于记录每个回合的奖励
+    for i_epoch in range(500):
         seed = 0
         state = env.reset(seed)
         # env.clear_memory()
@@ -185,12 +188,12 @@ def main():  # sourcery skip: for-index-underscore
         total_reward = 0  # 记录每个 episode 的总奖励
         steps = 0  # 记录每个 episode 的步数
 
-        for t in count():
+        while True:
             action, action_prob = agent.select_action(state)
             # print(action)
-            next_state, reward, done = env.step(action,seed)
+            next_state, reward, done = env.step(action, seed)
             seed += 1
-            
+
             trans = Transition(state, action, action_prob, reward, next_state)
             if render: env.render()
             agent.store_transition(trans)
@@ -199,22 +202,27 @@ def main():  # sourcery skip: for-index-underscore
             total_reward += reward  # 累加奖励
             steps += 1  # 计步数
 
-            if done:
+            if done :
                 if len(agent.buffer) >= agent.batch_size:
                     agent.update(i_epoch)
                 agent.writer.add_scalar('liveTime/livestep', steps, global_step=i_epoch)
 
                 # 打印每个 episode 的总奖励和步数
                 print(f"Episode {i_epoch} finished. Total reward: {total_reward}, Total steps: {steps}")
+                rewards_history.append(total_reward)
 
                 break
+    if len(rewards_history) >= 200:
+        last_200_rewards = rewards_history[-200:]
+        avg_reward_last_200 = np.mean(last_200_rewards)
+        print(f"Average reward for the last 200 episodes: {avg_reward_last_200:.2f}")
+    else:
+        print("Not enough episodes to calculate average reward for the last 200 episodes.")
+
 
 
 if __name__ == '__main__':
-
-
-
     main()
-
+    env.render()
 
 
