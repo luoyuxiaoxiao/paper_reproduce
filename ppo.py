@@ -143,8 +143,8 @@ class PPO():
         # PPO 更新
         for _ in range(self.ppo_update_time):
             for index in BatchSampler(SubsetRandomSampler(range(len(self.buffer))), self.batch_size, False):
-                if self.training_step % 1000 == 0:
-                    print(f'I_ep {i_ep} ，train {self.training_step} times')
+                # if self.training_step % 1000 == 0:
+                #     print(f'I_ep {i_ep} ，train {self.training_step} times')
 
                 Gt_index = Gt[index].view(-1, 1)
                 V = self.critic_net(states[index])
@@ -182,7 +182,7 @@ def main():  # sourcery skip: for-index-underscore
     agent = PPO()
     rewards_history = []  # 用于记录每个回合的奖励
     rewards_history_2 = []
-    for i_epoch in range(300):
+    for i_epoch in range(500):
         seed = 0
         state = env.reset(seed)
         # PPO
@@ -204,7 +204,7 @@ def main():  # sourcery skip: for-index-underscore
                 agent.writer.add_scalar('liveTime/livestep', steps, global_step=i_epoch)
 
                 # 打印每个 episode 的总奖励和步数
-                print(f"Episode {i_epoch} finished. Total reward: {reward}, Total steps: {steps}")
+                # print(f"Episode {i_epoch} finished. Total reward: {reward}, Total steps: {steps}")
                 rewards_history.append(reward)
 
                 break
@@ -216,7 +216,7 @@ def main():  # sourcery skip: for-index-underscore
             _, reward_random, done_random, steps = env.step(None)
             if done_random:
                 rewards_history_2.append(reward_random)
-                print(f"Episode {i_epoch} finished. Random reward: {reward_random}, Total steps: {steps}")
+                # print(f"Episode {i_epoch} finished. Random reward: {reward_random}, Total steps: {steps}")
                 
                 break
 
