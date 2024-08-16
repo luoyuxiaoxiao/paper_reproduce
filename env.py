@@ -251,6 +251,7 @@ if __name__ == '__main__':
     threshold = 50000
     T = 90
     battery = 100
+    battery = 100
 
     env = Environment(N, M, Width, fv, Dn, Cn, fn, distance, P, mu, eta, sigma, alpha, T, threshold, battery)
     for _ in range(10):

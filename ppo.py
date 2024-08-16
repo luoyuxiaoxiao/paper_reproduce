@@ -36,11 +36,11 @@ num_state = 26
 # num_action = 64
 num_users = 5
 num_action_per_user = 4
-# num_action = np.array(env.action.get_action_space()).shape[1]
 
 torch.manual_seed(seed)
 # env.seed(seed)
 Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
+
 
 
 class Actor(nn.Module):
@@ -57,6 +57,7 @@ class Actor(nn.Module):
         # Apply softmax to ensure the sum of probabilities for each user is 1
         action_prob = F.softmax(action_logits, dim=-1)
         return action_prob
+
 
 
 class Critic(nn.Module):
@@ -184,10 +185,6 @@ def main():  # sourcery skip: for-index-underscore
     for i_epoch in range(300):
         seed = 0
         state = env.reset(seed)
-        # env.clear_memory()
-
-        total_reward = 0  # 记录每个 episode 的总奖励
-
         # PPO
         while True:
             action, action_prob = agent.select_action(state)
@@ -213,6 +210,7 @@ def main():  # sourcery skip: for-index-underscore
                 break
 
         # Random
+        seed = 0
         env.reset(seed)
         while True:
             _, reward_random, done_random, steps = env.step(None)
